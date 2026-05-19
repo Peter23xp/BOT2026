@@ -200,8 +200,6 @@ async def main() -> None:
         timeout_seconds=config.get("timeout_seconds", 300),
         trailing_activation_percent=config.get("trailing_activation_percent", 0.2),
         trailing_stop_percent=config.get("stop_loss_percent", 0.15),
-        take_profit_percent=config["take_profit_percent"],
-        stop_loss_percent=config["stop_loss_percent"],
         fees_percent=config.get("fees_percent", 0.04),
     )
 
