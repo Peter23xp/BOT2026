@@ -1,6 +1,6 @@
 exchange: binance
 testnet: true
-dry_run: true
+dry_run: false
 pairs:
   - BTC/USDT
   - ETH/USDT

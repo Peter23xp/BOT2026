@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(python *)",
+      "Bash(pip install *)",
+      "Bash(pytest *)",
+      "Bash(pip search *)",
+      "Bash(pip index *)"
+    ]
+  }
+}
