@@ -12,6 +12,8 @@ dependencies = [
     "python-dotenv>=1.0",
     "loguru>=0.7",
     "matplotlib>=3.7",
+    "streamlit>=1.30",
+    "python-telegram-bot>=21.0",
 ]
 
 [project.optional-dependencies]

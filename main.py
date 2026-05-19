@@ -15,6 +15,7 @@ from core.order_executor import OrderExecutor
 from core.pnl_tracker import PnLCalculator
 from db.models import init_database, insert_trade, insert_signal, update_daily_stats
 from models.events import MarketData, Signal, OrderRequest, OrderResult, TradeClose
+from notifications.telegram_alert import TelegramAlert
 
 
 logger.remove()
@@ -87,6 +88,7 @@ async def execution_loop(
     executor: OrderExecutor,
     strategy: ScalpingStrategy,
     risk_manager: RiskManager,
+    telegram: TelegramAlert,
 ) -> None:
     while True:
         request: OrderRequest = await order_queue.get()
@@ -96,6 +98,7 @@ async def execution_loop(
             strategy.open_positions.add(result.pair)
             risk_manager.open_position_count += 1
             await result_queue.put(result)
+            await telegram.notify_open(result.pair, result.side, result.fill_price, result.size)
 
         order_queue.task_done()
 
@@ -107,6 +110,7 @@ async def position_monitor_loop(
     risk_manager: RiskManager,
     pnl_calc: PnLCalculator,
     db,
+    telegram: TelegramAlert,
 ) -> None:
     while True:
         closes = executor.check_positions()
@@ -115,6 +119,14 @@ async def position_monitor_loop(
             risk_manager.open_position_count -= 1
             risk_manager.record_trade_result(close.pnl_usdt)
             pnl_calc.record_trade(close.pnl_usdt)
+            await telegram.notify_close(close.pair, close.side, close.pnl_usdt, risk_manager.daily_pnl)
+
+            daily_dd = abs(risk_manager.daily_pnl) / risk_manager.capital * 100
+            if risk_manager.daily_pnl < 0 and daily_dd >= 10 and not risk_manager.is_halted:
+                await telegram.notify_drawdown_warning(daily_dd)
+            if risk_manager.is_halted:
+                total_dd = abs(risk_manager.total_pnl) / risk_manager.capital * 100
+                await telegram.notify_critical_stop(total_dd)
 
             trade_record = {
                 "pair": close.pair,
@@ -204,6 +216,7 @@ async def main() -> None:
     )
 
     pnl_calc = PnLCalculator(fees_percent=config.get("fees_percent", 0.04))
+    telegram = TelegramAlert()
 
     market_queue: asyncio.Queue[MarketData] = asyncio.Queue(maxsize=100)
     signal_queue: asyncio.Queue[Signal] = asyncio.Queue(maxsize=50)
@@ -240,8 +253,8 @@ async def main() -> None:
         asyncio.create_task(data_feed.run(market_queue)),
         asyncio.create_task(strategy_loop(market_queue, signal_queue, strategy, executor)),
         asyncio.create_task(risk_loop(signal_queue, order_queue, risk_manager, db)),
-        asyncio.create_task(execution_loop(order_queue, result_queue, executor, strategy, risk_manager)),
-        asyncio.create_task(position_monitor_loop(result_queue, executor, strategy, risk_manager, pnl_calc, db)),
+        asyncio.create_task(execution_loop(order_queue, result_queue, executor, strategy, risk_manager, telegram)),
+        asyncio.create_task(position_monitor_loop(result_queue, executor, strategy, risk_manager, pnl_calc, db, telegram)),
     ]
 
     try:
