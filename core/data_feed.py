@@ -36,14 +36,33 @@ class DataFeed:
         else:
             await self._run_live(output_queue)
 
+    def _futures_symbol(self, pair: str) -> str:
+        """Convertit BTC/USDT en BTC/USDT:USDT pour Futures."""
+        if ":" not in pair:
+            quote = pair.split("/")[1] if "/" in pair else "USDT"
+            return f"{pair}:{quote}"
+        return pair
+
     async def _run_live(self, output_queue: asyncio.Queue) -> None:
         logger.info(f"DataFeed live demarre pour {self.pairs} ({self.timeframe})")
+
+        # Pre-charger le buffer avec des données historiques REST
+        for pair in self.pairs:
+            try:
+                symbol = self._futures_symbol(pair)
+                candles = await self.exchange.fetch_ohlcv(symbol, self.timeframe, limit=self._buffer_size)
+                if candles:
+                    self._candle_buffer[pair] = candles
+                    logger.info(f"Buffer initial {pair}: {len(candles)} bougies chargees")
+            except Exception as e:
+                logger.warning(f"Impossible de pre-charger {pair}: {e}")
 
         while not self._shutdown:
             try:
                 for pair in self.pairs:
-                    ohlcv = await self.exchange.watch_ohlcv(pair, self.timeframe)
-                    order_book = await self.exchange.watch_order_book(pair, limit=5)
+                    symbol = self._futures_symbol(pair)
+                    ohlcv = await self.exchange.watch_ohlcv(symbol, self.timeframe)
+                    order_book = await self.exchange.watch_order_book(symbol, limit=5)
 
                     if ohlcv:
                         latest = ohlcv[-1]

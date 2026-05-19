@@ -87,8 +87,13 @@ class OrderExecutor:
                 order_type = "market"
                 side_ccxt = "buy" if request.signal.side == "LONG" else "sell"
 
+                symbol = request.signal.pair
+                if ":" not in symbol:
+                    quote = symbol.split("/")[1] if "/" in symbol else "USDT"
+                    symbol = f"{symbol}:{quote}"
+
                 response = await self.exchange.create_order(
-                    symbol=request.signal.pair,
+                    symbol=symbol,
                     type=order_type,
                     side=side_ccxt,
                     amount=request.size,

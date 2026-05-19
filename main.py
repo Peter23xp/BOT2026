@@ -32,18 +32,44 @@ def load_config(path: str = "config/config.yaml") -> dict:
         return yaml.safe_load(f)
 
 
+async def heartbeat_loop(strategy: ScalpingStrategy, risk_manager: RiskManager, executor: OrderExecutor, pnl_calc: PnLCalculator) -> None:
+    count = 0
+    while True:
+        await asyncio.sleep(30)
+        count += 1
+        positions = len(executor.positions)
+        logger.info(
+            f"[HEARTBEAT #{count}] "
+            f"Positions: {positions} | "
+            f"PnL jour: {risk_manager.daily_pnl:+.2f} USDT | "
+            f"PnL total: {risk_manager.total_pnl:+.2f} USDT | "
+            f"Win rate: {pnl_calc.win_rate:.1f}% | "
+            f"Trades: {len(pnl_calc.trades)}"
+        )
+
+
 async def strategy_loop(
     market_queue: asyncio.Queue,
     signal_queue: asyncio.Queue,
     strategy: ScalpingStrategy,
     executor: OrderExecutor,
 ) -> None:
+    candle_count = 0
     while True:
         data: MarketData = await market_queue.get()
         executor.update_price(data.pair, data.close)
+        candle_count += 1
+
+        if candle_count % 10 == 1:
+            logger.info(
+                f"[MARKET] {data.pair} | Prix: {data.close:.2f} | "
+                f"RSI: {data.rsi:.1f} | EMA: {data.ema:.2f} | "
+                f"Vol ratio: {data.volume_ratio:.2f} | Spread: {data.spread_percent:.4f}%"
+            )
 
         sig = strategy.evaluate(data)
         if sig:
+            logger.info(f"[SIGNAL] {sig.side} {sig.pair} @ {sig.entry_price:.2f} | RSI={sig.rsi:.1f} | Vol={sig.volume_ratio:.2f}")
             await signal_queue.put(sig)
 
         market_queue.task_done()
@@ -255,6 +281,7 @@ async def main() -> None:
         asyncio.create_task(risk_loop(signal_queue, order_queue, risk_manager, db)),
         asyncio.create_task(execution_loop(order_queue, result_queue, executor, strategy, risk_manager, telegram)),
         asyncio.create_task(position_monitor_loop(result_queue, executor, strategy, risk_manager, pnl_calc, db, telegram)),
+        asyncio.create_task(heartbeat_loop(strategy, risk_manager, executor, pnl_calc)),
     ]
 
     try:
