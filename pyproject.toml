@@ -1,0 +1,24 @@
+[project]
+name = "scalping-bot"
+version = "0.1.0"
+description = "Bot de scalping automatique pour crypto (Binance Futures)"
+requires-python = ">=3.11"
+dependencies = [
+    "ccxt>=4.0",
+    "pandas>=2.0",
+    "pandas-ta>=0.3",
+    "aiosqlite>=0.19",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    "loguru>=0.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"

@@ -1,0 +1,20 @@
+exchange: binance
+testnet: true
+dry_run: true
+pairs:
+  - BTC/USDT
+  - ETH/USDT
+timeframe: 1m
+capital_usdt: 1000
+risk_per_trade_percent: 1.0
+max_drawdown_percent: 15.0
+daily_drawdown_limit: 5.0
+leverage: 5
+max_open_positions: 3
+take_profit_percent: 0.3
+stop_loss_percent: 0.15
+trailing_stop: true
+trailing_activation_percent: 0.2
+timeout_seconds: 300
+slippage_percent: 0.01
+fees_percent: 0.04
