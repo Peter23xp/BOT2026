@@ -271,5 +271,18 @@ async def main() -> None:
             task.cancel()
 
 
+def launch_dashboard():
+    import subprocess
+    subprocess.Popen(
+        [sys.executable, "-m", "streamlit", "run", "dashboard/app.py", "--server.headless", "true"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    logger.info("Dashboard Streamlit lance sur http://localhost:8501")
+
+
 if __name__ == "__main__":
+    import os
+    if os.getenv("LAUNCH_DASHBOARD", "true").lower() == "true":
+        launch_dashboard()
     asyncio.run(main())
